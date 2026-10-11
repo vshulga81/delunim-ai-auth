@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Delunim AI authorization</title>
+<style>
+body{font:16px system-ui;background:#f5f7fb;color:#15213a;display:grid;place-items:center;min-height:90vh}
+main{background:white;padding:28px;border-radius:14px;max-width:440px;width:90%;box-shadow:0 4px 22px #0001}
+input,button{box-sizing:border-box;width:100%;padding:12px;margin:8px 0;border:1px solid #bfc8d6;border-radius:7px}
+button{background:#173d8b;color:white;cursor:pointer}button.secondary{background:white;color:#173d8b}
+small{color:#566}#error{color:#b42318;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<main>
+<h2>Delunim AI</h2>
+<p id="status">Checking authorization request…</p>
+<section id="login" hidden>
+<p>Sign in to your dedicated Delunim AI account.</p>
+<input id="email" type="email" autocomplete="username" placeholder="Email">
+<input id="password" type="password" autocomplete="current-password" placeholder="Password">
+<button id="signin">Sign in</button>
+</section>
+<section id="consent" hidden>
+<p id="details"></p>
+<button id="allow">Allow access</button>
+<button id="deny" class="secondary">Deny</button>
+</section>
+<p id="error" role="alert"></p>
+<small>Only approve a request you initiated in ChatGPT. This page never asks for your Gemini API key.</small>
+</main>
+<script type="module">
+import {createClient} from "https://esm.sh/@supabase/supabase-js@2.57.0";
+const supabase=createClient("https://tbfcfrapzoibpupfrzby.supabase.co","sb_publishable_tWXh_8UtWfPaYs7TO-GzOA_vxKtE7x4");
+const id=new URL(location.href).searchParams.get("authorization_id");
+const $=x=>document.getElementById(x);
+const fail=e=>{$("error").textContent=e?.message||String(e);$("status").textContent="Authorization failed";};
+async function show(){
+ if(!id){$("status").textContent="No authorization request. Open this page through ChatGPT.";return;}
+ const {data:{user},error}=await supabase.auth.getUser();
+ if(error && error.name!=="AuthSessionMissingError"){fail(error);return;}
+ if(!user){$("status").textContent="Sign in to continue";$("login").hidden=false;return;}
+ $("login").hidden=true;
+ const {data,error:detailsError}=await supabase.auth.oauth.getAuthorizationDetails(id);
+ if(detailsError){fail(detailsError);return;}
+ if(data?.redirect_url){location.assign(data.redirect_url);return;}
+ if(!data?.authorization_id){fail("Invalid authorization details");return;}
+ $("status").textContent="Approve connection to ChatGPT?";
+ $("details").textContent="Application: "+(data.client?.name||"Unknown")+" | Redirect: "+(data.redirect_uri||"Unknown")+" | Requested permissions: "+(data.scope||"none");
+ $("consent").hidden=false;
+}
+$("signin").onclick=async()=>{const {error}=await supabase.auth.signInWithPassword({email:$("email").value,password:$("password").value});if(error)fail(error);else{$("error").textContent="";await show();}};
+$("allow").onclick=async()=>{const {data,error}=await supabase.auth.oauth.approveAuthorization(id);if(error)fail(error);else if(data?.redirect_url)location.assign(data.redirect_url);else fail("Missing redirect URL");};
+$("deny").onclick=async()=>{const {data,error}=await supabase.auth.oauth.denyAuthorization(id);if(error)fail(error);else if(data?.redirect_url)location.assign(data.redirect_url);else fail("Missing redirect URL");};
+show().catch(fail);
+</script>
+</body>
+</html>
