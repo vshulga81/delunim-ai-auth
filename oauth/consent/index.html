@@ -31,7 +31,7 @@ small{color:#566}#error{color:#b42318;white-space:pre-wrap}
 <small>Only approve a request you initiated in ChatGPT. This page never asks for your Gemini API key.</small>
 </main>
 <script type="module">
-import {createClient} from "https://esm.sh/@supabase/supabase-js@2.57.0";
+import {createClient} from "https://esm.sh/@supabase/supabase-js@2";
 const supabase=createClient("https://tbfcfrapzoibpupfrzby.supabase.co","sb_publishable_tWXh_8UtWfPaYs7TO-GzOA_vxKtE7x4");
 const id=new URL(location.href).searchParams.get("authorization_id");
 const $=x=>document.getElementById(x);
